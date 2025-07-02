@@ -1,0 +1,212 @@
+/* Reset et base */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Arial', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+}
+
+/* Container principal */
+.game-container {
+    text-align: center;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 30px;
+    border-radius: 20px;
+    backdrop-filter: blur(10px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* Titre */
+h1 {
+    margin-bottom: 30px;
+    font-size: 2.5em;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Plateau de jeu */
+.simon-board {
+    display: grid;
+    grid-template-columns: repeat(2, 150px);
+    grid-template-rows: repeat(2, 150px);
+    gap: 10px;
+    margin: 30px auto;
+    justify-content: center;
+}
+
+/* Boutons du Simon */
+.simon-button {
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    position: relative;
+    overflow: hidden;
+}
+
+.simon-button:hover {
+    transform: scale(1.05);
+}
+
+.simon-button:active {
+    transform: scale(0.95);
+}
+
+/* Couleurs des boutons */
+.simon-button.red {
+    background: linear-gradient(145deg, #ff6b6b, #ee5a52);
+}
+
+.simon-button.green {
+    background: linear-gradient(145deg, #51cf66, #40c057);
+}
+
+.simon-button.blue {
+    background: linear-gradient(145deg, #339af0, #228be6);
+}
+
+.simon-button.yellow {
+    background: linear-gradient(145deg, #ffd43b, #fab005);
+}
+
+/* États des boutons */
+.simon-button.active {
+    filter: brightness(1.5);
+    box-shadow: 0 0 30px rgba(255, 255, 255, 0.8);
+}
+
+.simon-button.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Contrôles et interface */
+.controls {
+    margin-top: 30px;
+}
+
+.info-panel {
+    display: flex;
+    justify-content: space-around;
+    margin: 20px 0;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px;
+    border-radius: 10px;
+}
+
+.info-item {
+    text-align: center;
+}
+
+.info-label {
+    font-size: 0.9em;
+    opacity: 0.8;
+    margin-bottom: 5px;
+}
+
+.info-value {
+    font-size: 1.5em;
+    font-weight: bold;
+}
+
+/* Boutons de contrôle */
+button {
+    background: linear-gradient(145deg, #4ecdc4, #44a08d);
+    color: white;
+    border: none;
+    padding: 12px 24px;
+    margin: 0 10px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+button:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+button:disabled {
+    background: #ccc;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Messages */
+.message {
+    margin-top: 20px;
+    font-size: 1.2em;
+    min-height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.success {
+    color: #51cf66;
+}
+
+.error {
+    color: #ff6b6b;
+}
+
+.game-over {
+    background: rgba(255, 107, 107, 0.2);
+    padding: 20px;
+    border-radius: 10px;
+    margin-top: 20px;
+}
+
+/* Animations */
+@keyframes pulse {
+    0%, 100% { 
+        transform: scale(1); 
+    }
+    50% { 
+        transform: scale(1.1); 
+    }
+}
+
+.pulse {
+    animation: pulse 0.5s ease-in-out;
+}
+
+/* Responsive */
+@media (max-width: 480px) {
+    .game-container {
+        padding: 20px;
+        margin: 10px;
+    }
+    
+    .simon-board {
+        grid-template-columns: repeat(2, 120px);
+        grid-template-rows: repeat(2, 120px);
+        gap: 8px;
+    }
+    
+    h1 {
+        font-size: 2em;
+    }
+    
+    .info-panel {
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    button {
+        margin: 5px;
+        padding: 10px 20px;
+    }
+}
