@@ -1,318 +1,201 @@
-/**
- * Classe principale du jeu Simon
- * Gère toute la logique du jeu, les interactions utilisateur et l'affichage
- */
-class SimonGame {
-    constructor() {
-        // État du jeu
-        this.sequence = [];
-        this.playerSequence = [];
-        this.level = 1;
-        this.score = 0;
-        this.bestScore = this.loadBestScore();
-        this.isPlaying = false;
-        this.isShowingSequence = false;
-        this.currentStep = 0;
-        
-        // Éléments DOM
-        this.buttons = document.querySelectorAll('.simon-button');
-        this.startBtn = document.getElementById('start-btn');
-        this.resetBtn = document.getElementById('reset-btn');
-        this.levelDisplay = document.getElementById('level');
-        this.scoreDisplay = document.getElementById('score');
-        this.bestScoreDisplay = document.getElementById('best-score');
-        this.messageDisplay = document.getElementById('message');
-        
-        // Configuration
-        this.colors = ['red', 'green', 'blue', 'yellow'];
-        this.soundFrequencies = {
-            red: 220,
-            green: 330,
-            blue: 440,
-            yellow: 550
-        };
-        
-        this.init();
+// État du jeu
+let sequence = [];
+let playerSequence = [];
+let level = 1;
+let score = 0;
+let bestScore = parseInt(localStorage.getItem('simon-best-score') || '0');
+let isPlaying = false;
+let isShowingSequence = false;
+let currentStep = 0;
+
+// Configuration
+const colors = ['red', 'green', 'blue', 'yellow'];
+const soundFrequencies = { red: 220, green: 330, blue: 440, yellow: 550 };
+
+// Éléments DOM
+const buttons = document.querySelectorAll('.simon-button');
+const startBtn = document.getElementById('start-btn');
+const resetBtn = document.getElementById('reset-btn');
+const levelDisplay = document.getElementById('level');
+const scoreDisplay = document.getElementById('score');
+const bestScoreDisplay = document.getElementById('best-score');
+const messageDisplay = document.getElementById('message');
+
+// Utilitaires
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+function updateDisplay() {
+    levelDisplay.textContent = level;
+    scoreDisplay.textContent = score;
+    bestScoreDisplay.textContent = bestScore;
+}
+
+function showMessage(text, type = '') {
+    messageDisplay.textContent = text;
+    messageDisplay.className = `message ${type}`;
+}
+
+function toggleButtons(enable) {
+    buttons.forEach(button => {
+        button.classList.toggle('disabled', !enable);
+    });
+}
+
+function playSound(color) {
+    if (!window.AudioContext && !window.webkitAudioContext) return;
+    
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.setValueAtTime(soundFrequencies[color], audioContext.currentTime);
+    oscillator.type = 'sine';
+    
+    gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+    
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.3);
+}
+
+async function highlightButton(color) {
+    const button = document.querySelector(`[data-color="${color}"]`);
+    button.classList.add('active');
+    playSound(color);
+    
+    await delay(400);
+    button.classList.remove('active');
+}
+
+async function showSequence() {
+    isShowingSequence = true;
+    toggleButtons(false);
+    
+    await delay(500);
+    
+    for (const color of sequence) {
+        await delay(300);
+        await highlightButton(color);
     }
     
-    /**
-     * Initialise le jeu
-     */
-    init() {
-        this.updateDisplay();
-        this.addEventListeners();
+    isShowingSequence = false;
+    toggleButtons(true);
+    showMessage("À votre tour !");
+}
+
+function nextRound() {
+    playerSequence = [];
+    currentStep = 0;
+    
+    const randomColor = colors[Math.floor(Math.random() * colors.length)];
+    sequence.push(randomColor);
+    
+    showSequence();
+}
+
+async function gameOver() {
+    isPlaying = false;
+    toggleButtons(false);
+    
+    if (score > bestScore) {
+        bestScore = score;
+        localStorage.setItem('simon-best-score', bestScore.toString());
+        showMessage(`Nouveau record ! Score: ${score}`, 'success');
+    } else {
+        showMessage(`Game Over ! Score: ${score}`, 'error');
     }
     
-    /**
-     * Ajoute tous les event listeners nécessaires
-     */
-    addEventListeners() {
-        // Boutons de contrôle
-        this.startBtn.addEventListener('click', () => this.startGame());
-        this.resetBtn.addEventListener('click', () => this.resetGame());
-        
-        // Boutons du Simon
-        this.buttons.forEach(button => {
-            button.addEventListener('click', (e) => {
-                if (!this.isPlaying || this.isShowingSequence) return;
-                
-                const color = e.target.dataset.color;
-                this.handlePlayerInput(color);
-            });
-        });
-        
-        // Gestion du clavier (optionnel)
-        document.addEventListener('keydown', (e) => {
-            if (!this.isPlaying || this.isShowingSequence) return;
-            
-            const keyMap = {
-                'q': 'red',
-                'w': 'green',
-                'o': 'blue',
-                'p': 'yellow'
-            };
-            
-            if (keyMap[e.key.toLowerCase()]) {
-                this.handlePlayerInput(keyMap[e.key.toLowerCase()]);
-            }
-        });
-    }
+    updateDisplay();
+    startBtn.disabled = false;
+    startBtn.textContent = "Rejouer";
     
-    /**
-     * Démarre une nouvelle partie
-     */
-    startGame() {
-        this.isPlaying = true;
-        this.sequence = [];
-        this.level = 1;
-        this.score = 0;
-        this.updateDisplay();
-        this.showMessage("Mémoriser la séquence...", "");
-        
-        this.startBtn.disabled = true;
-        this.nextRound();
-    }
-    
-    /**
-     * Passe au niveau suivant
-     */
-    nextRound() {
-        this.playerSequence = [];
-        this.currentStep = 0;
-        
-        // Ajouter une nouvelle couleur à la séquence
-        const randomColor = this.colors[Math.floor(Math.random() * this.colors.length)];
-        this.sequence.push(randomColor);
-        
-        this.showSequence();
-    }
-    
-    /**
-     * Affiche la séquence à mémoriser
-     */
-    async showSequence() {
-        this.isShowingSequence = true;
-        this.disableButtons();
-        
-        // Petit délai avant de commencer
-        await this.delay(500);
-        
-        for (let i = 0; i < this.sequence.length; i++) {
-            await this.delay(300);
-            await this.highlightButton(this.sequence[i]);
-        }
-        
-        this.isShowingSequence = false;
-        this.enableButtons();
-        this.showMessage("À votre tour !", "");
-    }
-    
-    /**
-     * Met en surbrillance un bouton avec son et animation
-     * @param {string} color - La couleur du bouton à mettre en surbrillance
-     */
-    async highlightButton(color) {
-        const button = document.querySelector(`[data-color="${color}"]`);
-        button.classList.add('active');
-        this.playSound(color);
-        
-        await this.delay(400);
-        button.classList.remove('active');
-    }
-    
-    /**
-     * Gère l'input du joueur
-     * @param {string} color - La couleur cliquée par le joueur
-     */
-    handlePlayerInput(color) {
-        this.playerSequence.push(color);
-        this.highlightButton(color);
-        
-        // Vérifier si la couleur est correcte
-        if (color !== this.sequence[this.currentStep]) {
-            this.gameOver();
-            return;
-        }
-        
-        this.currentStep++;
-        
-        // Vérifier si le joueur a terminé la séquence
-        if (this.currentStep === this.sequence.length) {
-            this.score += this.level * 10;
-            this.level++;
-            this.updateDisplay();
-            
-            this.showMessage("Bravo ! Niveau suivant...", "success");
-            
-            setTimeout(() => {
-                this.nextRound();
-            }, 1500);
-        }
-    }
-    
-    /**
-     * Gère la fin de partie
-     */
-    gameOver() {
-        this.isPlaying = false;
-        this.disableButtons();
-        
-        if (this.score > this.bestScore) {
-            this.bestScore = this.score;
-            this.saveBestScore();
-            this.showMessage(`Nouveau record ! Score: ${this.score}`, "success");
-        } else {
-            this.showMessage(`Game Over ! Score: ${this.score}`, "error");
-        }
-        
-        this.updateDisplay();
-        this.startBtn.disabled = false;
-        this.startBtn.textContent = "Rejouer";
-        
-        // Animation de fin
-        this.flashAllButtons();
-    }
-    
-    /**
-     * Remet le jeu à zéro
-     */
-    resetGame() {
-        this.isPlaying = false;
-        this.isShowingSequence = false;
-        this.sequence = [];
-        this.playerSequence = [];
-        this.level = 1;
-        this.score = 0;
-        this.currentStep = 0;
-        
-        this.enableButtons();
-        this.updateDisplay();
-        this.showMessage("Cliquez sur \"Commencer\" pour jouer !", "");
-        
-        this.startBtn.disabled = false;
-        this.startBtn.textContent = "Commencer";
-    }
-    
-    /**
-     * Met à jour l'affichage des scores et du niveau
-     */
-    updateDisplay() {
-        this.levelDisplay.textContent = this.level;
-        this.scoreDisplay.textContent = this.score;
-        this.bestScoreDisplay.textContent = this.bestScore;
-    }
-    
-    /**
-     * Affiche un message à l'utilisateur
-     * @param {string} text - Le texte à afficher
-     * @param {string} type - Le type de message (success, error, etc.)
-     */
-    showMessage(text, type) {
-        this.messageDisplay.textContent = text;
-        this.messageDisplay.className = `message ${type}`;
-    }
-    
-    /**
-     * Désactive tous les boutons du Simon
-     */
-    disableButtons() {
-        this.buttons.forEach(button => {
-            button.classList.add('disabled');
-        });
-    }
-    
-    /**
-     * Active tous les boutons du Simon
-     */
-    enableButtons() {
-        this.buttons.forEach(button => {
-            button.classList.remove('disabled');
-        });
-    }
-    
-    /**
-     * Animation de clignotement de tous les boutons (game over)
-     */
-    async flashAllButtons() {
-        const flashCount = 3;
-        for (let i = 0; i < flashCount; i++) {
-            this.buttons.forEach(button => button.classList.add('active'));
-            await this.delay(200);
-            this.buttons.forEach(button => button.classList.remove('active'));
-            await this.delay(200);
-        }
-    }
-    
-    /**
-     * Génère un son pour une couleur donnée avec Web Audio API
-     * @param {string} color - La couleur pour laquelle jouer le son
-     */
-    playSound(color) {
-        if (!window.AudioContext && !window.webkitAudioContext) return;
-        
-        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const oscillator = audioContext.createOscillator();
-        const gainNode = audioContext.createGain();
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(audioContext.destination);
-        
-        oscillator.frequency.setValueAtTime(this.soundFrequencies[color], audioContext.currentTime);
-        oscillator.type = 'sine';
-        
-        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-        
-        oscillator.start(audioContext.currentTime);
-        oscillator.stop(audioContext.currentTime + 0.3);
-    }
-    
-    /**
-     * Utilitaire pour créer un délai
-     * @param {number} ms - Nombre de millisecondes à attendre
-     * @returns {Promise} - Promise qui se résout après le délai
-     */
-    delay(ms) {
-        return new Promise(resolve => setTimeout(resolve, ms));
-    }
-    
-    /**
-     * Charge le meilleur score depuis le localStorage
-     * @returns {number} - Le meilleur score sauvegardé
-     */
-    loadBestScore() {
-        return parseInt(localStorage.getItem('simon-best-score') || '0');
-    }
-    
-    /**
-     * Sauvegarde le meilleur score dans le localStorage
-     */
-    saveBestScore() {
-        localStorage.setItem('simon-best-score', this.bestScore.toString());
+    // Animation de fin
+    for (let i = 0; i < 3; i++) {
+        buttons.forEach(button => button.classList.add('active'));
+        await delay(200);
+        buttons.forEach(button => button.classList.remove('active'));
+        await delay(200);
     }
 }
 
-// Initialisation du jeu quand le DOM est chargé
-document.addEventListener('DOMContentLoaded', () => {
-    new SimonGame();
-});
+function handlePlayerInput(color) {
+    playerSequence.push(color);
+    highlightButton(color);
+    
+    if (color !== sequence[currentStep]) {
+        gameOver();
+        return;
+    }
+    
+    currentStep++;
+    
+    if (currentStep === sequence.length) {
+        score += level * 10;
+        level++;
+        updateDisplay();
+        
+        showMessage("Bravo ! Niveau suivant...", 'success');
+        
+        setTimeout(nextRound, 1500);
+    }
+}
+
+function startGame() {
+    isPlaying = true;
+    sequence = [];
+    level = 1;
+    score = 0;
+    updateDisplay();
+    showMessage("Mémoriser la séquence...");
+    
+    startBtn.disabled = true;
+    nextRound();
+}
+
+function resetGame() {
+    isPlaying = false;
+    isShowingSequence = false;
+    sequence = [];
+    playerSequence = [];
+    level = 1;
+    score = 0;
+    currentStep = 0;
+    
+    toggleButtons(true);
+    updateDisplay();
+    showMessage("Cliquez sur \"Commencer\" pour jouer !");
+    
+    startBtn.disabled = false;
+    startBtn.textContent = "Commencer";
+}
+
+// Event listeners
+function initGame() {
+    updateDisplay();
+    
+    startBtn.addEventListener('click', startGame);
+    resetBtn.addEventListener('click', resetGame);
+    
+    buttons.forEach(button => {
+        button.addEventListener('click', (e) => {
+            if (!isPlaying || isShowingSequence) return;
+            handlePlayerInput(e.target.dataset.color);
+        });
+    });
+    
+    // Contrôles clavier optionnels
+    const keyMap = { 'q': 'red', 'w': 'green', 'o': 'blue', 'p': 'yellow' };
+    
+    document.addEventListener('keydown', (e) => {
+        if (!isPlaying || isShowingSequence) return;
+        
+        const color = keyMap[e.key.toLowerCase()];
+        if (color) handlePlayerInput(color);
+    });
+}
+
+// Initialisation
+document.addEventListener('DOMContentLoaded', initGame);
